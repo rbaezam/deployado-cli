@@ -1,0 +1,5 @@
+deployado-*
+!deployado-cli
+dist/
+*.tar.gz
+.DS_Store

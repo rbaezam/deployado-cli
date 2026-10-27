@@ -1,0 +1,76 @@
+# Deployado Blueprint Example
+# This file defines your entire application stack
+# Place it in your project root as deployado.yaml
+
+name: my-startup
+
+# Databases to create
+databases:
+  - name: main-db
+    version: "16"
+    maxConnections: 100
+    backupEnabled: true
+
+# Services (apps) to deploy
+services:
+  # Backend API (.NET)
+  - name: api
+    path: ./backend
+    runtime: dotnet
+    port: 8080
+    preDeployCommand: "dotnet ef database update"
+    envVars:
+      # Connection string from database
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: main-db
+          property: connectionString
+
+      # Generated secrets
+      - key: Jwt__Key
+        generateSecret: true
+
+      # Static values
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      # Prompted during deploy (for sensitive values)
+      - key: Stripe__SecretKey
+        prompt: true
+        description: "Stripe API secret key"
+
+  # Frontend (Vue.js)
+  - name: web
+    path: ./frontend
+    runtime: static
+    envVars:
+      # Reference the API service URL
+      - key: VITE_API_URL
+        fromService:
+          name: api
+          property: url
+
+    # Automatic linking (alternative to fromService)
+    links:
+      - service: api
+        envVar: VITE_API_URL
+
+  # Background worker
+  - name: worker
+    path: ./backend
+    type: worker
+    runtime: dotnet
+    envVars:
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: main-db
+          property: connectionString
+
+# Shared environment variables
+envGroups:
+  - name: common
+    envVars:
+      - key: LOG_LEVEL
+        value: info
+      - key: TZ
+        value: America/Mexico_City
